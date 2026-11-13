@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>컨테이너별 적재배치도 계산기 v0.1.0</title>
+<style>body{font-family:sans-serif;max-width:960px;margin:24px auto;padding:0 12px}label{display:inline-block;margin:4px 12px 4px 0}input,select{padding:4px;width:90px}select{width:auto}table{border-collapse:collapse;width:100%;margin-top:12px}th,td{border:1px solid #ccc;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}.best{background:#e8f5e9;font-weight:bold}small{color:#666}button{padding:6px 14px;margin-left:8px}</style></head><body>
+<h1>컨테이너별 적재배치도 계산기</h1>
+<p><small>v0.1.0 / 가상 데이터 예시 / 박스는 같은 방향으로 격자 적재(6가지 방향 비교). 단위 cm, kg. 컨테이너 내부치수는 일반 기준값이며 선사별로 다를 수 있음.</small></p>
+<div><label>가로 L<input id="L" type="number" value="60"></label><label>세로 W<input id="W" type="number" value="40"></label><label>높이 H<input id="H" type="number" value="35"></label><label>박스 무게(kg)<input id="K" type="number" value="12"></label><label>총 수량<input id="Q" type="number" value="3000"></label><button onclick="calc()">계산</button></div>
+<table><thead><tr><th>컨테이너</th><th>내부 L x W x H</th><th>최대 중량</th><th>최적 방향(a x b x c)</th><th>격자(길이x폭x단)</th><th>용적 기준</th><th>중량 기준</th><th>컨테이너당 적재</th><th>필요 대수</th><th>용적 사용률</th></tr></thead><tbody id="tb"></tbody></table>
+<h3 id="ht"></h3><div id="svg"></div><p id="chk"><small></small></p>
+<script>
+const C=[["20GP",589,235,239,28000],["40GP",1203,235,239,26500],["40HC",1203,235,269,26500]];
+function perms(a){return [[a[0],a[1],a[2]],[a[0],a[2],a[1]],[a[1],a[0],a[2]],[a[1],a[2],a[0]],[a[2],a[0],a[1]],[a[2],a[1],a[0]]]}
+function best(c,d,kg){let b=null;perms(d).forEach(p=>{const nx=Math.floor(c[1]/p[0]),ny=Math.floor(c[2]/p[1]),nz=Math.floor(c[3]/p[2]);const v=nx*ny*nz;if(!b||v>b.v)b={p,nx,ny,nz,v}});b.w=Math.floor(c[4]/kg);b.n=Math.min(b.v,b.w);return b}
+function calc(){const d=[+L.value,+W.value,+H.value],kg=+K.value,q=+Q.value;let h="",bi=-1,bn=1e9,res=[];
+C.forEach((c,i)=>{const b=best(c,d,kg);b.need=b.n>0?Math.ceil(q/b.n):0;b.util=b.n*d[0]*d[1]*d[2]/(c[1]*c[2]*c[3])*100;res.push(b)});
+res.forEach((b,i)=>{if(b.need>0&&(b.need<bn||(b.need==bn&&b.util>res[bi].util))){bn=b.need;bi=i}});
+res.forEach((b,i)=>{const c=C[i];h+="<tr class='"+(i==bi?"best":"")+"'><td>"+c[0]+"</td><td>"+c[1]+"x"+c[2]+"x"+c[3]+"</td><td>"+c[4]+"</td><td>"+b.p.join("x")+"</td><td>"+b.nx+"x"+b.ny+"x"+b.nz+"</td><td>"+b.v+"</td><td>"+b.w+"</td><td>"+b.n+"</td><td>"+b.need+"</td><td>"+b.util.toFixed(1)+"%</td></tr>"});
+tb.innerHTML=h;
+if(bi<0){ht.textContent="적재 불가";svg.innerHTML="";return}
+const c=C[bi],b=res[bi],s=700/c[1];let o="<svg width='"+(c[1]*s)+"' height='"+(c[2]*s)+"' style='border:2px solid #333;background:#fafafa'>";
+for(let x=0;x<b.nx;x++)for(let y=0;y<b.ny;y++)o+="<rect x='"+(x*b.p[0]*s)+"' y='"+(y*b.p[1]*s)+"' width='"+(b.p[0]*s)+"' height='"+(b.p[1]*s)+"' fill='#93c5fd' stroke='#1d4ed8' stroke-width='0.6'/>";
+svg.innerHTML=o+"</svg>";ht.textContent="추천: "+c[0]+" "+b.need+"대 / 평면도(1단, 위에서 본 모습) "+b.nx+"x"+b.ny+"="+(b.nx*b.ny)+"개 x "+b.nz+"단";
+document.querySelector("#chk small").textContent="검산: 컨테이너당 "+b.n+"개 x "+b.need+"대 = "+(b.n*b.need)+" >= 총 수량 "+q+(b.n==b.w?" (중량 제한이 한도)":" (용적 제한이 한도)")}
+calc();
+</script></body></html>
