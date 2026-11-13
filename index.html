@@ -1,24 +1,50 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>컨테이너별 적재배치도 계산기 v0.1.0</title>
-<style>body{font-family:sans-serif;max-width:960px;margin:24px auto;padding:0 12px}label{display:inline-block;margin:4px 12px 4px 0}input,select{padding:4px;width:90px}select{width:auto}table{border-collapse:collapse;width:100%;margin-top:12px}th,td{border:1px solid #ccc;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}.best{background:#e8f5e9;font-weight:bold}small{color:#666}button{padding:6px 14px;margin-left:8px}</style></head><body>
-<h1>컨테이너별 적재배치도 계산기</h1>
-<p><small>v0.1.0 / 가상 데이터 예시 / 박스는 같은 방향으로 격자 적재(6가지 방향 비교). 단위 cm, kg. 컨테이너 내부치수는 일반 기준값이며 선사별로 다를 수 있음.</small></p>
-<div><label>가로 L<input id="L" type="number" value="60"></label><label>세로 W<input id="W" type="number" value="40"></label><label>높이 H<input id="H" type="number" value="35"></label><label>박스 무게(kg)<input id="K" type="number" value="12"></label><label>총 수량<input id="Q" type="number" value="3000"></label><button onclick="calc()">계산</button></div>
-<table><thead><tr><th>컨테이너</th><th>내부 L x W x H</th><th>최대 중량</th><th>최적 방향(a x b x c)</th><th>격자(길이x폭x단)</th><th>용적 기준</th><th>중량 기준</th><th>컨테이너당 적재</th><th>필요 대수</th><th>용적 사용률</th></tr></thead><tbody id="tb"></tbody></table>
-<h3 id="ht"></h3><div id="svg"></div><p id="chk"><small></small></p>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>컨테이너별 롤 적재배치도 계산기 v0.1.1</title>
+<style>body{font-family:'Malgun Gothic',sans-serif;max-width:1100px;margin:24px auto;padding:0 12px;color:#222}label{display:inline-block;margin:4px 14px 4px 0;font-size:13px}input,select{padding:4px;width:80px}select{width:auto}table{border-collapse:collapse;width:100%;margin-top:12px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}.best{background:#e8f5e9;font-weight:bold}small{color:#666}button{padding:6px 14px}fieldset{border:1px solid #ddd;margin:8px 0;padding:6px 10px}legend{font-size:13px;font-weight:700}#msg{color:#c0392b;font-weight:700}</style></head><body>
+<h1>컨테이너별 롤 적재배치도 계산기</h1>
+<p><small>v0.1.1 / 가상 데이터 예시 / 롤을 세워서 팔레트 위에 적재(롤 지폭이 높이). 같은 규격 롤만 적재하는 단순안. 단위 mm.</small></p>
+<fieldset><legend>팔레트</legend><label>팔레트 가로<input id="PL" type="number" value="1100"></label><label>팔레트 세로<input id="PW" type="number" value="1100"></label><label>팔레트 높이<input id="PH" type="number" value="120"></label></fieldset>
+<fieldset><legend>롤</legend><label>롤 직경<input id="D" type="number" value="550"></label><label>롤 높이(지폭)<input id="W" type="number" value="800"></label><label>층간 간지<input id="G" type="number" value="10"></label><label>총 롤 수량<input id="Q" type="number" value="500"></label></fieldset>
+<fieldset><legend>컨테이너</legend><label>천장 여유(적재한계=내부높이-여유)<input id="M" type="number" value="150"></label><button onclick="calc()">계산</button> <span id="msg"></span></fieldset>
+<table><thead><tr><th>컨테이너</th><th>내부 L x W x H</th><th>적재한계</th><th>팔레트 배치(길이x폭)</th><th>도어측 반팔레트</th><th>팔레트당 롤(층당 x 단)</th><th>적재 높이</th><th>컨테이너당 롤</th><th>필요 대수</th></tr></thead><tbody id="tb"></tbody></table>
+<h3 id="ht"></h3><div id="svg"></div><div id="svg2"></div><p id="chk"><small></small></p>
 <script>
-const C=[["20GP",589,235,239,28000],["40GP",1203,235,239,26500],["40HC",1203,235,269,26500]];
-function perms(a){return [[a[0],a[1],a[2]],[a[0],a[2],a[1]],[a[1],a[0],a[2]],[a[1],a[2],a[0]],[a[2],a[0],a[1]],[a[2],a[1],a[0]]]}
-function best(c,d,kg){let b=null;perms(d).forEach(p=>{const nx=Math.floor(c[1]/p[0]),ny=Math.floor(c[2]/p[1]),nz=Math.floor(c[3]/p[2]);const v=nx*ny*nz;if(!b||v>b.v)b={p,nx,ny,nz,v}});b.w=Math.floor(c[4]/kg);b.n=Math.min(b.v,b.w);return b}
-function calc(){const d=[+L.value,+W.value,+H.value],kg=+K.value,q=+Q.value;let h="",bi=-1,bn=1e9,res=[];
-C.forEach((c,i)=>{const b=best(c,d,kg);b.need=b.n>0?Math.ceil(q/b.n):0;b.util=b.n*d[0]*d[1]*d[2]/(c[1]*c[2]*c[3])*100;res.push(b)});
-res.forEach((b,i)=>{if(b.need>0&&(b.need<bn||(b.need==bn&&b.util>res[bi].util))){bn=b.need;bi=i}});
-res.forEach((b,i)=>{const c=C[i];h+="<tr class='"+(i==bi?"best":"")+"'><td>"+c[0]+"</td><td>"+c[1]+"x"+c[2]+"x"+c[3]+"</td><td>"+c[4]+"</td><td>"+b.p.join("x")+"</td><td>"+b.nx+"x"+b.ny+"x"+b.nz+"</td><td>"+b.v+"</td><td>"+b.w+"</td><td>"+b.n+"</td><td>"+b.need+"</td><td>"+b.util.toFixed(1)+"%</td></tr>"});
-tb.innerHTML=h;
-if(bi<0){ht.textContent="적재 불가";svg.innerHTML="";return}
-const c=C[bi],b=res[bi],s=700/c[1];let o="<svg width='"+(c[1]*s)+"' height='"+(c[2]*s)+"' style='border:2px solid #333;background:#fafafa'>";
-for(let x=0;x<b.nx;x++)for(let y=0;y<b.ny;y++)o+="<rect x='"+(x*b.p[0]*s)+"' y='"+(y*b.p[1]*s)+"' width='"+(b.p[0]*s)+"' height='"+(b.p[1]*s)+"' fill='#93c5fd' stroke='#1d4ed8' stroke-width='0.6'/>";
-svg.innerHTML=o+"</svg>";ht.textContent="추천: "+c[0]+" "+b.need+"대 / 평면도(1단, 위에서 본 모습) "+b.nx+"x"+b.ny+"="+(b.nx*b.ny)+"개 x "+b.nz+"단";
-document.querySelector("#chk small").textContent="검산: 컨테이너당 "+b.n+"개 x "+b.need+"대 = "+(b.n*b.need)+" >= 총 수량 "+q+(b.n==b.w?" (중량 제한이 한도)":" (용적 제한이 한도)")}
+const CT={"20GP":[5898,2352,2393],"40GP":[12030,2352,2393],"40HC":[12030,2350,2700]};
+function plan(ct,pl,pw,ph,D,W,gap,margin){
+ const [CL,CW,CH]=CT[ct],lim=CH-margin;let best=null;
+ [[pl,pw],[pw,pl]].forEach(([a,b])=>{
+  const per=Math.floor(a/D)*Math.floor(b/D);
+  const along=Math.floor(CL/a),across=Math.floor(CW/b);
+  const s=CL-along*a; const sr=Math.floor(s/D)*Math.floor(b/D);
+  let n=0; while(ph+(n+1)*W+n*gap<=lim) n++;
+  const full=along*across, half=sr>0?across:0;
+  const cap=full*per*n+half*sr*n;
+  const h=n>0?ph+n*W+(n-1)*gap:0;
+  if(!best||cap>best.cap) best={a,b,per,along,across,s,sr,n,full,half,cap,h,lim,CL,CW,CH};
+ });
+ return best;}
+function calc(){
+ const v=id=>+document.getElementById(id).value,pl=v("PL"),pw=v("PW"),ph=v("PH"),D=v("D"),W=v("W"),G=v("G"),Q=v("Q"),M=v("M");
+ msg.textContent="";
+ if(D>Math.min(pl,pw)){msg.textContent="롤 직경이 팔레트보다 큽니다";}
+ const res={};let h="",bi=null;
+ Object.keys(CT).forEach(k=>{const r=plan(k,pl,pw,ph,D,W,G,M);r.need=r.cap>0?Math.ceil(Q/r.cap):0;res[k]=r});
+ Object.keys(res).forEach(k=>{const r=res[k];if(r.need>0&&(bi===null||r.need<res[bi].need))bi=k});
+ Object.keys(res).forEach(k=>{const r=res[k],c=CT[k];h+="<tr class='"+(k==bi?"best":"")+"'><td>"+k+"</td><td>"+c.join(" x ")+"</td><td>"+r.lim+"</td><td>"+r.along+" x "+r.across+" = "+r.full+"개 ("+r.a+"x"+r.b+")</td><td>"+r.half+"개 (층당 "+r.sr+"롤)</td><td>"+r.per+" x "+r.n+" = "+(r.per*r.n)+"</td><td>"+r.h+"</td><td>"+r.cap+"</td><td>"+(r.need||"적재 불가")+"</td></tr>"});
+ tb.innerHTML=h;
+ if(bi===null){ht.textContent="적재 불가: 팔레트+롤 높이가 적재한계를 넘습니다";svg.innerHTML="";svg2.innerHTML="";chk.firstChild.textContent="";return}
+ const r=res[bi],s=Math.min(1000/r.CL,1);let o="<svg width='"+(r.CL*s+20)+"' height='"+(r.CW*s+10)+"' style='background:#fff'><rect x='0' y='0' width='"+(r.CL*s)+"' height='"+(r.CW*s)+"' fill='#f6f7f9' stroke='#333' stroke-width='2'/>";
+ const rr=D/2*s,per=[Math.floor(r.a/D),Math.floor(r.b/D)];
+ function pal(x,y,w,hh,nx,ny,fill){o+="<rect x='"+(x*s)+"' y='"+(y*s)+"' width='"+(w*s)+"' height='"+(hh*s)+"' fill='"+fill+"' stroke='#8d6e63'/>";for(let i=0;i<nx;i++)for(let j=0;j<ny;j++)o+="<circle cx='"+((x+(i+.5)*D)*s)+"' cy='"+((y+(j+.5)*D)*s)+"' r='"+rr+"' fill='#93c5fd' stroke='#1d4ed8' stroke-width='.6'/>"}
+ for(let i=0;i<r.along;i++)for(let j=0;j<r.across;j++)pal(i*r.a,j*r.b,r.a,r.b,per[0],per[1],'#fff8e1');
+ if(r.half>0)for(let j=0;j<r.across;j++)pal(r.along*r.a,j*r.b,r.s,r.b,Math.floor(r.s/D),per[1],'#ffe0b2');
+ svg.innerHTML=o+"<text x='4' y='12' font-size='11'>도어 쪽 →</text></svg>";
+ const sh=220,sc=sh/r.CH,sw=70;let o2="<svg width='"+(sw*2+40)+"' height='"+(sh+30)+"'><rect x='10' y='5' width='"+(sw*2)+"' height='"+sh+"' fill='#fafbfc' stroke='#333'/><line x1='10' x2='"+(10+sw*2)+"' y1='"+(5+(r.CH-r.lim)*sc)+"' y2='"+(5+(r.CH-r.lim)*sc)+"' stroke='#c0392b' stroke-dasharray='5 3'/>";
+ o2+="<rect x='40' y='"+(5+(r.CH-ph)*sc)+"' width='"+sw+"' height='"+(ph*sc)+"' fill='#8d6e63'/>";
+ for(let k=0;k<r.n;k++){const top=ph+k*(W+G);o2+="<rect x='40' y='"+(5+(r.CH-top-W)*sc)+"' width='"+sw+"' height='"+(W*sc)+"' fill='#d9961a' stroke='#fff'/>"}
+ svg2.innerHTML=o2+"<text x='10' y='"+(sh+22)+"' font-size='11'>측면: 팔레트 "+ph+" + "+r.n+"단 = "+r.h+"mm (한계 "+r.lim+")</text></svg>";
+ ht.textContent="추천: "+bi+" "+r.need+"대 / 팔레트 "+r.full+"개"+(r.half?" + 도어측 반팔레트 "+r.half+"개":"")+", "+r.n+"단 적재 (평면도 위, 측면도 아래)";
+ chk.firstChild.textContent="검산: 컨테이너당 "+r.cap+"롤 x "+r.need+"대 = "+(r.cap*r.need)+" >= 총 수량 "+Q+" / 높이 "+ph+"+"+r.n+"x"+W+"+"+(r.n-1)+"x"+G+" = "+r.h+" <= "+r.lim;
+}
 calc();
 </script></body></html>
