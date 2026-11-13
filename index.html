@@ -1,15 +1,15 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>컨테이너별 롤 적재배치도 계산기 v0.1.1</title>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>컨테이너별 롤 적재배치도 계산기 v0.1.2</title>
 <style>body{font-family:'Malgun Gothic',sans-serif;max-width:1100px;margin:24px auto;padding:0 12px;color:#222}label{display:inline-block;margin:4px 14px 4px 0;font-size:13px}input,select{padding:4px;width:80px}select{width:auto}table{border-collapse:collapse;width:100%;margin-top:12px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}.best{background:#e8f5e9;font-weight:bold}small{color:#666}button{padding:6px 14px}fieldset{border:1px solid #ddd;margin:8px 0;padding:6px 10px}legend{font-size:13px;font-weight:700}#msg{color:#c0392b;font-weight:700}</style></head><body>
 <h1>컨테이너별 롤 적재배치도 계산기</h1>
-<p><small>v0.1.1 / 가상 데이터 예시 / 롤을 세워서 팔레트 위에 적재(롤 지폭이 높이). 같은 규격 롤만 적재하는 단순안. 단위 mm.</small></p>
+<p><small>v0.1.2 / 가상 데이터 예시 / 컨테이너 내부치수는 ISO 및 선사 통상값(냉동은 선사별 편차 있음) / 롤을 세워서 팔레트 위에 적재(롤 지폭이 높이). 같은 규격 롤만 적재하는 단순안. 단위 mm.</small></p>
 <fieldset><legend>팔레트</legend><label>팔레트 가로<input id="PL" type="number" value="1100"></label><label>팔레트 세로<input id="PW" type="number" value="1100"></label><label>팔레트 높이<input id="PH" type="number" value="120"></label></fieldset>
 <fieldset><legend>롤</legend><label>롤 직경<input id="D" type="number" value="550"></label><label>롤 높이(지폭)<input id="W" type="number" value="800"></label><label>층간 간지<input id="G" type="number" value="10"></label><label>총 롤 수량<input id="Q" type="number" value="500"></label></fieldset>
 <fieldset><legend>컨테이너</legend><label>천장 여유(적재한계=내부높이-여유)<input id="M" type="number" value="150"></label><button onclick="calc()">계산</button> <span id="msg"></span></fieldset>
 <table><thead><tr><th>컨테이너</th><th>내부 L x W x H</th><th>적재한계</th><th>팔레트 배치(길이x폭)</th><th>도어측 반팔레트</th><th>팔레트당 롤(층당 x 단)</th><th>적재 높이</th><th>컨테이너당 롤</th><th>필요 대수</th></tr></thead><tbody id="tb"></tbody></table>
 <h3 id="ht"></h3><div id="svg"></div><div id="svg2"></div><p id="chk"><small></small></p>
 <script>
-const CT={"20GP":[5898,2352,2393],"40GP":[12030,2352,2393],"40HC":[12030,2350,2700]};
+const CT={"20GP":[5898,2352,2393],"40GP":[12032,2352,2393],"40HC":[12032,2352,2698],"40RF(냉동 HC)":[11580,2290,2550]};
 function plan(ct,pl,pw,ph,D,W,gap,margin){
  const [CL,CW,CH]=CT[ct],lim=CH-margin;let best=null;
  [[pl,pw],[pw,pl]].forEach(([a,b])=>{
