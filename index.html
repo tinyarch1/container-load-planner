@@ -1,8 +1,12 @@
 <!doctype html>
-<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>컨테이너별 롤 적재배치도 계산기 v0.1.2</title>
-<style>body{font-family:'Malgun Gothic',sans-serif;max-width:1100px;margin:24px auto;padding:0 12px;color:#222}label{display:inline-block;margin:4px 14px 4px 0;font-size:13px}input,select{padding:4px;width:80px}select{width:auto}table{border-collapse:collapse;width:100%;margin-top:12px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}.best{background:#e8f5e9;font-weight:bold}small{color:#666}button{padding:6px 14px}fieldset{border:1px solid #ddd;margin:8px 0;padding:6px 10px}legend{font-size:13px;font-weight:700}#msg{color:#c0392b;font-weight:700}</style></head><body>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>컨테이너별 롤 적재배치도 계산기 v0.2.0</title>
+<style>body{font-family:'Malgun Gothic',sans-serif;max-width:1100px;margin:24px auto;padding:0 12px;color:#222}label{display:inline-block;margin:4px 14px 4px 0;font-size:13px}input,select{padding:4px;width:80px}select{width:auto}table{border-collapse:collapse;width:100%;margin-top:12px;font-size:13px}th,td{border:1px solid #ccc;padding:6px;text-align:right}th:first-child,td:first-child{text-align:left}.best{background:#e8f5e9;font-weight:bold}small{color:#666}button{padding:6px 14px}fieldset{border:1px solid #ddd;margin:8px 0;padding:6px 10px}legend{font-size:13px;font-weight:700}#msg{color:#c0392b;font-weight:700}#ds{border:1px solid #ddd;padding:8px 10px;margin:10px 0}#dsum{font-weight:700;margin:4px 0}.dsd{font-size:12px;color:#555}#dsmsg{font-weight:700}#dsbox{max-height:260px;overflow:auto}#dsbox table{margin-top:4px}tr.sel{background:#fff3cd}</style></head><body>
 <h1>컨테이너별 롤 적재배치도 계산기</h1>
-<p><small>v0.1.2 / 가상 데이터 예시 / 컨테이너 내부치수는 ISO 및 선사 통상값(냉동은 선사별 편차 있음) / 롤을 세워서 팔레트 위에 적재(롤 지폭이 높이). 같은 규격 롤만 적재하는 단순안. 단위 mm.</small></p>
+<p><small>v0.2.0 / 가상 데이터(합성 33건, 문제 데이터 6건 포함) / 롤 규격 목록에서 선택하면 아래 입력칸에 들어갑니다 / 컨테이너 내부치수는 ISO 및 선사 통상값(냉동은 선사별 편차 있음) / 롤을 세워서 팔레트 위에 적재(롤 지폭이 높이). 같은 규격 롤만 적재하는 단순안. 단위 mm.</small></p>
+<section id="ds"><h3 style="margin:0 0 4px">롤 규격 데이터 (가상·합성)</h3><div id="dsum">데이터를 불러오는 중…</div><div class="dsd" id="dsrc"></div>
+<div style="margin:6px 0"><button onclick="dsDownload()">보이는 결과 CSV 내려받기</button> <label style="margin-left:10px">내려받은 CSV 다시 불러와 확인 <input id="dsfile" type="file" accept=".csv,text/csv" style="width:auto"></label> <span id="dsmsg"></span></div>
+<details><summary>제외·중복된 항목과 이유 (<span id="dsn">0</span>건)</summary><div class="dsd" id="dslog"></div></details>
+<div id="dsbox"></div></section>
 <fieldset><legend>팔레트</legend><label>팔레트 가로<input id="PL" type="number" value="1100"></label><label>팔레트 세로<input id="PW" type="number" value="1100"></label><label>팔레트 높이<input id="PH" type="number" value="120"></label></fieldset>
 <fieldset><legend>롤</legend><label>롤 직경<input id="D" type="number" value="550"></label><label>롤 높이(지폭)<input id="W" type="number" value="800"></label><label>층간 간지<input id="G" type="number" value="10"></label><label>총 롤 수량<input id="Q" type="number" value="500"></label></fieldset>
 <fieldset><legend>컨테이너</legend><label>천장 여유(적재한계=내부높이-여유)<input id="M" type="number" value="150"></label><button onclick="calc()">계산</button> <span id="msg"></span></fieldset>
@@ -46,5 +50,37 @@ function calc(){
  ht.textContent="추천: "+bi+" "+r.need+"대 / 팔레트 "+r.full+"개"+(r.half?" + 도어측 반팔레트 "+r.half+"개":"")+", "+r.n+"단 적재 (평면도 위, 측면도 아래)";
  chk.firstChild.textContent="검산: 컨테이너당 "+r.cap+"롤 x "+r.need+"대 = "+(r.cap*r.need)+" >= 총 수량 "+Q+" / 높이 "+ph+"+"+r.n+"x"+W+"+"+(r.n-1)+"x"+G+" = "+r.h+" <= "+r.lim;
 }
+
+/* ===== v0.2.0 데이터 길: 읽기 -> 제외 검사 -> 중복 제거 -> 정렬 -> 화면 (규칙: docs/data/RULES.md) ===== */
+const LIM={D:[100,1500],W:[100,2000],Q:[1,100000]};
+function parseCSV(t){t=t.replace(/^\uFEFF/,"");const out=[];let row=[],f="",q=false;for(let i=0;i<t.length;i++){const c=t[i];if(q){if(c=='"'){if(t[i+1]=='"'){f+='"';i++}else q=false}else f+=c}else if(c=='"')q=true;else if(c==","){row.push(f);f=""}else if(c=="\n"||c=="\r"){if(c=="\r"&&t[i+1]=="\n")i++;row.push(f);f="";if(row.some(x=>x!==""))out.push(row);row=[]}else f+=c}
+ if(f!==""||row.length){row.push(f);if(row.some(x=>x!==""))out.push(row)}return out}
+function okDate(s){if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;const d=new Date(s+"T00:00:00Z");return !isNaN(d)&&d.toISOString().slice(0,10)===s}
+function processData(text){
+ const rows=parseCSV(text).slice(1),log=[],valid=[];
+ rows.forEach((r,i)=>{const [code="",d="",w="",q="",dt=""]=r.map(x=>x.trim());const no=i+1,raw=(r[0]||"").replace(/ /g,"\u2423");
+  if(!code||!d||!w||!q||!dt){log.push({no,code:raw,kind:"제외",why:"필수 칸 빠짐"});return}
+  const nd=Number(d),nw=Number(w),nq=Number(q);
+  if(!okDate(dt)||![nd,nw,nq].every(Number.isInteger)){log.push({no,code:raw,kind:"제외",why:"형식 틀림(날짜 YYYY-MM-DD / 숫자)"});return}
+  if(nd<LIM.D[0]||nd>LIM.D[1]||nw<LIM.W[0]||nw>LIM.W[1]||nq<LIM.Q[0]||nq>LIM.Q[1]){log.push({no,code:raw,kind:"제외",why:"범위 밖(직경 100~1500, 지폭 100~2000, 수량 1~100000)"});return}
+  valid.push({no,key:code.toUpperCase(),d:nd,w:nw,q:nq,dt})});
+ const m=new Map();
+ valid.forEach(v=>{const e=m.get(v.key);if(!e){m.set(v.key,v)}else if(v.dt>e.dt){log.push({no:e.no,code:e.key,kind:"중복",why:"같은 제품코드, 확인일이 더 오래됨("+e.dt+") → "+v.dt+" 남김"});m.set(v.key,v)}else{log.push({no:v.no,code:v.key,kind:"중복",why:"같은 제품코드, "+(v.dt<e.dt?"확인일이 더 오래됨":"확인일 같음, 먼저 나온 줄 남김")})}});
+ const list=[...m.values()].sort((a,b)=>b.d-a.d||(a.key<b.key?-1:a.key>b.key?1:0));
+ const asOf=list.reduce((s,x)=>x.dt>s?x.dt:s,"");
+ return {n:rows.length,x:log.filter(l=>l.kind=="제외").length,y:log.filter(l=>l.kind=="중복").length,k:list.length,list,log:log.sort((a,b)=>a.no-b.no),asOf}}
+let DS=null;
+function dsRender(r,src){DS=r;
+ dsum.textContent="원천 "+r.n+"건 → 제외 "+r.x+" · 중복 "+r.y+" → 표시 "+r.k+"건 · 기준일 "+r.asOf+" · 출처 "+src+(r.n==r.x+r.y+r.k?"":" (검산 불일치!)");
+ dsn.textContent=r.log.length;
+ dslog.innerHTML=r.log.length?"<table><tr><th>원천 줄</th><th>제품코드</th><th>구분</th><th>이유</th></tr>"+r.log.map(l=>"<tr><td>"+(l.no+1)+"</td><td>"+l.code+"</td><td>"+l.kind+"</td><td style='text-align:left'>"+l.why+"</td></tr>").join("")+"</table>":"없음";
+ dsbox.innerHTML="<table><tr><th>제품코드</th><th>롤직경</th><th>롤지폭</th><th>롤수량</th><th>확인일</th><th>계산기에 넣기</th></tr>"+r.list.map((x,i)=>"<tr id='dr"+i+"'><td>"+x.key+"</td><td>"+x.d+"</td><td>"+x.w+"</td><td>"+x.q+"</td><td>"+x.dt+"</td><td><button onclick='dsPick("+i+")'>선택</button></td></tr>").join("")+"</table>"}
+function dsPick(i){const x=DS.list[i];D.value=x.d;W.value=x.w;Q.value=x.q;document.querySelectorAll("#dsbox tr.sel").forEach(e=>e.classList.remove("sel"));document.getElementById("dr"+i).classList.add("sel");calc();window.scrollTo({top:document.querySelector("fieldset").offsetTop,behavior:"smooth"})}
+function dsCSV(list){return "\uFEFF제품코드,롤직경,롤지폭,롤수량,확인일\n"+list.map(x=>[x.key,x.d,x.w,x.q,x.dt].join(",")).join("\n")+"\n"}
+function dsDownload(){if(!DS)return;const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([dsCSV(DS.list)],{type:"text/csv;charset=utf-8"}));a.download="rolls_표시결과_"+DS.k+"건.csv";a.click();dsmsg.style.color="#555";dsmsg.textContent=DS.k+"건 내려받음. 아래에서 같은 파일을 다시 불러와 확인하세요."}
+document.getElementById("dsfile").addEventListener("change",async e=>{const f=e.target.files[0];if(!f||!DS)return;const r=processData(await f.text());
+ const a=r.list.map(x=>x.key),b=DS.list.map(x=>x.key),same=a.length==b.length&&a.every((v,i)=>v==b[i]);
+ dsmsg.style.color=same?"#2e7d32":"#c0392b";dsmsg.textContent=same?"일치: 다시 불러온 "+r.k+"건, 화면과 같은 "+DS.k+"건 · 같은 순서":"불일치: 불러온 "+r.k+"건 / 화면 "+DS.k+"건 (건수 또는 순서가 다름)"});
+fetch("docs/data/rolls.csv").then(r=>{if(!r.ok)throw 0;return r.text()}).then(t=>dsRender(processData(t),"합성(docs/data/rolls.csv)")).catch(()=>{dsum.textContent="데이터 파일(docs/data/rolls.csv)을 읽지 못했습니다. 계산기는 아래 입력칸으로 그대로 쓸 수 있습니다."});
 calc();
 </script></body></html>
